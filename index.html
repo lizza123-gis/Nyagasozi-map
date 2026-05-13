@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Nyagasozi Village Parcels</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; }
+    #map { height: 100vh; width: 100%; }
+    .legend {
+      background: white;
+      padding: 10px 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      line-height: 2;
+      font-size: 13px;
+    }
+    .legend h4 {
+      margin-bottom: 4px;
+      font-size: 14px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 4px;
+    }
+    .legend i {
+      width: 18px;
+      height: 18px;
+      display: inline-block;
+      margin-right: 8px;
+      border-radius: 3px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+
+  // STEP 1: Create the map
+  var map = L.map('map').setView([-1.9055408804379983, 30.04245638230613], 15);
+
+  // STEP 2: Add tile layer (basemap)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  // STEP 3: Color function based on area (land use)
+  function getColor(area) {
+    var a = parseFloat(area);
+    if (a > 1000) return '#228B22'; // Green = Agricultural
+    if (a > 300)  return '#8B4513'; // Brown = Residential
+    return '#CC0000';               // Red = Commercial
+  }
+
+  // STEP 4: Style function
+  function style(feature) {
+    return {
+      fillColor: getColor(feature.properties.st_area_sh),
+      color: 'white',
+      weight: 0.8,
+      fillOpacity: 0.7
+    };
+  }
+
+  // STEP 5: Load External GeoJSON file
+  fetch('parcels.geojson')
+    .then(response => response.json())
+    .then(data => {
+
+      // STEP 6: Add GeoJSON to map with style and popups
+      var geojsonLayer = L.geoJSON(data, {
+
+        style: style,
+
+        // STEP 7: Add popup showing UPI and Area
+        onEachFeature: function(feature, layer) {
+          var p = feature.properties;
+          var area = parseFloat(p.st_area_sh).toFixed(2);
+
+          // Land use label
+          var a = parseFloat(p.st_area_sh);
+          var landuse = a > 1000 ? 'Agricultural' :
+                        a > 300  ? 'Residential'  : 'Commercial';
+
+          layer.bindPopup(
+            '<b>UPI:</b> ' + p.upi + '<br/>' +
+            '<b>Area:</b> ' + area + ' m²<br/>' +
+            '<b>Land Use:</b> ' + landuse
+          );
+        }
+
+      }).addTo(map);
+
+      // Auto fit map to parcels
+      map.fitBounds(geojsonLayer.getBounds());
+    });
+
+  // STEP 8: Add Legend
+  var legend = L.control({ position: 'bottomright' });
+  legend.onAdd = function() {
+    var div = L.DomUtil.create('div', 'legend');
+    div.innerHTML =
+      '<h4>Land Use</h4>' +
+      '<i style="background:#8B4513"></i> Residential<br/>' +
+      '<i style="background:#228B22"></i> Agricultural<br/>' +
+      '<i style="background:#CC0000"></i> Commercial<br/>';
+    return div;
+  };
+  legend.addTo(map);
+
+</script>
+</body>
+</html>
